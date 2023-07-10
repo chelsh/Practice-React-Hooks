@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 
-const useInputName = (initialValue, validator) => {
-  const [value, setValue] = useState(initialValue);
+const useInputName = (initialName, validator) => {
+  const [name, setName] = useState(initialName);
   const [overLength, setOverLength] = useState(false);
-  const onChange = (event) => {
+  const handleNameChange = useCallback((event) => {
     let isValid = true;
     if (typeof validator === "function") {
       isValid = validator(event.target.value);
@@ -11,26 +17,25 @@ const useInputName = (initialValue, validator) => {
 
     if (isValid) {
       setOverLength(false);
-      setValue(event.target.value);
+      setName(event.target.value);
     } else {
       setOverLength(true);
-      setValue(event.target.value.substr(0, 10));
+      setName(event.target.value.substr(0, 10));
     }
-  };
-
-  return { value, onChange, overLength };
+  }, []);
+  return { name, handleNameChange, overLength };
 };
 
-const useInputEmail = (initialValue, validator) => {
-  const [value, setValue] = useState(initialValue);
-  const [golbaeng, setGolbaeng] = useState(true);
-  const onChange = (event) => {
+const useInputEmail = (initialEmail, validator) => {
+  const [email, setEmail] = useState(initialEmail);
+  const [atSign, setAtSign] = useState(true);
+  const handleEmailChange = (event) => {
     if (typeof validator === "function")
-      setGolbaeng(validator(event.target.value));
+      setAtSign(validator(event.target.value));
 
-    setValue(event.target.value);
+    setEmail(event.target.value);
   };
-  return { value, onChange, golbaeng };
+  return { email, handleEmailChange, atSign };
 };
 
 const useTabs = (initialTab, allTabs) => {
@@ -43,27 +48,52 @@ const contents = [
   { tab: "section 2", content: "Detail of the section 2" },
 ];
 
+const useTitle = (initialTitle) => {
+  const [title, setTitle] = useState(initialTitle);
+  const updateTitle = () => {
+    const htmlTitle = document.querySelector("title");
+    htmlTitle.innerText = title;
+  };
+  useEffect(updateTitle, [title]);
+  return setTitle;
+};
+
+const useClick = (onClick) => {
+  const element = useRef();
+  useEffect(() => {
+    if (element.current) {
+      element.current.addEventListener("click", onClick);
+    }
+    return () => {
+      if (element.current) {
+        element.current.removeEventListener("click", onClick);
+      }
+    };
+  }, []);
+  return element;
+};
+
 function App() {
   const maxLen = (value) => value.length <= 10;
-  const golbaeng = (value) => value.includes("@");
-  const name = useInputName("", maxLen);
-  const email = useInputEmail("", golbaeng);
+  const isIncluded = (value) => value.includes("@");
+  const { name, handleNameChange, overLength } = useInputName("", maxLen);
+  const { email, handleEmailChange, atSign } = useInputEmail("", isIncluded);
   const { currentItem, changeItem } = useTabs(0, contents);
+  const titleUpdater = useTitle("Loading...");
+  setTimeout(() => titleUpdater("Home", 3000));
+  const sayHello = () => {
+    console.log("Hello");
+  };
+  const title = useClick(sayHello);
 
   return (
     <div>
       <div>
-        <h1>Hello</h1>
-        <input placeholder="name" value={name.value} onChange={name.onChange} />
-        <input
-          placeholder="email"
-          value={email.value}
-          onChange={email.onChange}
-        />
-        {name.overLength ? <p>name should be less than 10 letters.</p> : null}
-        {email.value === "" || email.golbaeng ? null : (
-          <p>Please write correct email. </p>
-        )}
+        <h1>Hello {name}!</h1>
+        <input placeholder="name" value={name} onChange={handleNameChange} />
+        <input placeholder="email" value={email} onChange={handleEmailChange} />
+        {overLength ? <p>name should be less than 10 letters.</p> : null}
+        {email === "" || atSign ? null : <p>Please write correct email. </p>}
       </div>
       <div>
         {contents.map((section, idx) => (
@@ -75,6 +105,9 @@ function App() {
       <hr></hr>
       <div>
         <p>{currentItem.content}</p>
+      </div>
+      <div>
+        <button ref={title}>useRef practice: Hello in the console</button>
       </div>
     </div>
   );
